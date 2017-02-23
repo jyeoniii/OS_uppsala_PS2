@@ -32,6 +32,18 @@ volatile int counter;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+int compare_and_swap(int *accum, int *dest, int newval)
+{
+  if (*accum == *dest) {
+      *dest = newval;
+      return 1;
+  } else {
+      *accum = *dest;
+      return 0;
+  }
+}
+
+
 /* Access to the shared counter should be protected by a mutex */
 void *
 inc_mutex(void *arg __attribute__((unused)))
@@ -40,7 +52,9 @@ inc_mutex(void *arg __attribute__((unused)))
 
     /* TODO 1: Protect access to the shared variable */
     for (i = 0; i < INC_ITERATIONS; i++) {
+        pthread_mutex_lock(&mutex);
         counter += INCREMENT;
+        pthread_mutex_unlock(&mutex);
     }
 
     return NULL;
@@ -53,7 +67,9 @@ dec_mutex(void *arg __attribute__((unused)))
 
     /* TODO 1: Protect access to the shared variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
+        pthread_mutex_lock(&mutex);
         counter -= DECREMENT;
+        pthread_mutex_unlock(&mutex);
     }
 
     return NULL;
@@ -66,11 +82,13 @@ void *
 inc_cas(void *arg __attribute__((unused)))
 {
     int i;
+	int cmp;
 
     /* TODO 2: Use the compare and swap primitive to manipulate the shared
      * variable */
-    for (i = 0; i < INC_ITERATIONS; i++) {
-        counter += INCREMENT; // You need to replace this
+     for (i = 0; i < INC_ITERATIONS; i++) {
+		cmp = counter;
+        while(!compare_and_swap(&counter, &cmp, counter+INCREMENT));
     }
 
     return NULL;
@@ -79,12 +97,13 @@ inc_cas(void *arg __attribute__((unused)))
 void *
 dec_cas(void *arg __attribute__((unused)))
 {
-    int i;
+    int i, cmp;
 
     /* TODO 2: Use the compare and swap primitive to manipulate the shared
      * variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
-        counter += DECREMENT; // You need to replace this
+		cmp = counter;
+        while(!compare_and_swap(&counter, &cmp, counter+INCREMENT));
     }
 
     return NULL;
@@ -187,6 +206,7 @@ int
 main()
 {
     struct func_test_t *_func_test = func_test;
+    pthread_mutex_unlock(&mutex);
 
     while (_func_test->inc && _func_test->dec) {
         int n, nthreads = 0;
@@ -218,6 +238,7 @@ main()
             }
             nthreads++;
         }
+
 
         /* Wait for them to complete */
         for (n = 0; n < nthreads; n++)
