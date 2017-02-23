@@ -88,7 +88,7 @@ inc_cas(void *arg __attribute__((unused)))
      * variable */
      for (i = 0; i < INC_ITERATIONS; i++) {
 		cmp = counter;
-        while(!compare_and_swap(&counter, &cmp, counter+INCREMENT));
+		__sync_val_compare_and_swap(&counter, &cmp, counter-DECREMENT);
     }
 
     return NULL;
@@ -103,7 +103,7 @@ dec_cas(void *arg __attribute__((unused)))
      * variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
 		cmp = counter;
-        while(!compare_and_swap(&counter, &cmp, counter+INCREMENT));
+		__sync_val_compare_and_swap(&counter, &cmp, counter+INCREMENT);
     }
 
     return NULL;
@@ -119,7 +119,7 @@ inc_atomic(void *arg __attribute__((unused)))
 
     /* TODO 3: Use atomic primitives to manipulate the shared variable */
     for (i = 0; i < INC_ITERATIONS; i++) {
-        counter += DECREMENT; // You need to replace this
+		__sync_add_and_fetch(&counter, INCREMENT);
     }
 
     return NULL;
@@ -132,7 +132,7 @@ dec_atomic(void *arg __attribute__((unused)))
 
     /* TODO 3: Use atomic primitives to manipulate the shared variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
-        counter += DECREMENT; // You need to replace this
+		__sync_sub_and_fetch(&counter, DECREMENT);
     }
 
     return NULL;
