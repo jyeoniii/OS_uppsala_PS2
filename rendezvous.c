@@ -23,20 +23,22 @@
  * predictable way. Both should perform iteration 1 before iteration 2
  * and then 2 before 3 etc. */
 
-sem_t *semA, *semB;
+sem_t semA, semB;
 
 void *
 threadA(void *param __attribute__((unused)))
 {
-    int i;
+    int i, val;
 
     for (i = 0; i < LOOPS; i++) {
-        //sem_wait(&semA);
 
-        //sem_post(&semB);
+        sem_wait(&semA);
+
         printf("threadA --> %d iteration\n", i);
-        
-        //sem_post(&semA);
+
+        sem_getvalue(&semB, &val);
+        if(val!=1) sem_post(&semB);
+
         sleep(rand() % MAX_SLEEP_TIME);
   }
 
@@ -47,15 +49,16 @@ threadA(void *param __attribute__((unused)))
 void *
 threadB(void *param  __attribute__((unused)))
 {
-    int i;
+    int i, val;
 
     for (i = 0; i < LOOPS; i++) {
-        //sem_wait(&semA);
-        
+        sem_wait(&semB);
+
         printf("threadB --> %d iteration\n", i);
-        //sem_wait(&semB);
         
-        //sem_post(&semA);
+        sem_getvalue(&semA, &val);
+        if(val!=1) sem_post(&semA);
+
         sleep(rand() % MAX_SLEEP_TIME);
     }
 
@@ -70,19 +73,10 @@ main()
     srand(time(NULL));
     pthread_setconcurrency(3);
 
-    semA = sem_open("semA", O_CREAT, 0644, 1);
-    semB = sem_open("semB", O_CREAT, 0644, 1);
-
-    /*
-    if(sem_init(&semA, 0, 20) || sem_init(&semB, 0, 20)){
+    if(sem_init(&semA, 0, 1) || sem_init(&semB, 0, 1)){
         perror("semaphore initialization error\n");
         abort();
-    }*/
-
-    int val;
-    sem_getvalue(semA, &val);
-    printf("init semA = %d\n", val);
-
+    }
 
     if (pthread_create(&tidA, NULL, threadA, NULL) ||
 	pthread_create(&tidB, NULL, threadB, NULL)) {
