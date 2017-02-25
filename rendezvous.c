@@ -16,12 +16,14 @@
 
 #define LOOPS 5
 #define NTHREADS 3
-#define MAX_SLEEP_TIME 3
+#define MAX_SLEEP_TIME 3 
 
 
 /* TODO: Make the two threads perform their iterations in a
  * predictable way. Both should perform iteration 1 before iteration 2
  * and then 2 before 3 etc. */
+
+sem_t *semA, *semB;
 
 void *
 threadA(void *param __attribute__((unused)))
@@ -29,11 +31,14 @@ threadA(void *param __attribute__((unused)))
     int i;
 
     for (i = 0; i < LOOPS; i++) {
+        //sem_wait(&semA);
 
-	printf("threadA --> %d iteration\n", i);
-	sleep(rand() % MAX_SLEEP_TIME);
-
-    }
+        //sem_post(&semB);
+        printf("threadA --> %d iteration\n", i);
+        
+        //sem_post(&semA);
+        sleep(rand() % MAX_SLEEP_TIME);
+  }
 
     pthread_exit(0);
 }
@@ -45,11 +50,13 @@ threadB(void *param  __attribute__((unused)))
     int i;
 
     for (i = 0; i < LOOPS; i++) {
-
-
-	printf("threadB --> %d iteration\n", i);
-	sleep(rand() % MAX_SLEEP_TIME);
-
+        //sem_wait(&semA);
+        
+        printf("threadB --> %d iteration\n", i);
+        //sem_wait(&semB);
+        
+        //sem_post(&semA);
+        sleep(rand() % MAX_SLEEP_TIME);
     }
 
     pthread_exit(0);
@@ -63,6 +70,20 @@ main()
     srand(time(NULL));
     pthread_setconcurrency(3);
 
+    semA = sem_open("semA", O_CREAT, 0644, 1);
+    semB = sem_open("semB", O_CREAT, 0644, 1);
+
+    /*
+    if(sem_init(&semA, 0, 20) || sem_init(&semB, 0, 20)){
+        perror("semaphore initialization error\n");
+        abort();
+    }*/
+
+    int val;
+    sem_getvalue(semA, &val);
+    printf("init semA = %d\n", val);
+
+
     if (pthread_create(&tidA, NULL, threadA, NULL) ||
 	pthread_create(&tidB, NULL, threadB, NULL)) {
 	perror("pthread_create");
@@ -73,6 +94,7 @@ main()
 	perror("pthread_join");
 	abort();
     }
+
 
     return 0;
 }
