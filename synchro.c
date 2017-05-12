@@ -32,16 +32,7 @@ volatile int counter;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int compare_and_swap(int *accum, int *dest, int newval)
-{
-  if (*accum == *dest) {
-      *dest = newval;
-      return 1;
-  } else {
-      *accum = *dest;
-      return 0;
-  }
-}
+
 
 
 /* Access to the shared counter should be protected by a mutex */
@@ -52,9 +43,9 @@ inc_mutex(void *arg __attribute__((unused)))
 
     /* TODO 1: Protect access to the shared variable */
     for (i = 0; i < INC_ITERATIONS; i++) {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex); //lock
         counter += INCREMENT;
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutex); //unlock
     }
 
     return NULL;
@@ -67,9 +58,9 @@ dec_mutex(void *arg __attribute__((unused)))
 
     /* TODO 1: Protect access to the shared variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex); //lock
         counter -= DECREMENT;
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutex);   //unlock
     }
 
     return NULL;
@@ -88,8 +79,9 @@ inc_cas(void *arg __attribute__((unused)))
      * variable */
      for (i = 0; i < INC_ITERATIONS; i++) {
 		cmp = counter;
-		__sync_val_compare_and_swap(&counter, &cmp, counter-DECREMENT);
-    }
+        /*if current counter is equal to cmp (no other thread has updated it in betwwen), increase the value 
+        Otherwise do not update the value*/
+		__sync_val_compare_and_swap(&counter, &cmp, counter+INCREMENT);     }
 
     return NULL;
 }
@@ -103,7 +95,9 @@ dec_cas(void *arg __attribute__((unused)))
      * variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
 		cmp = counter;
-		__sync_val_compare_and_swap(&counter, &cmp, counter+INCREMENT);
+        /*if current counter is equal to cmp (no other thread has updated it in between), decrease the value 
+        Otherwise do not update the value*/
+        __sync_val_compare_and_swap(&counter, &cmp, counter-DECREMENT); 
     }
 
     return NULL;
@@ -119,8 +113,9 @@ inc_atomic(void *arg __attribute__((unused)))
 
     /* TODO 3: Use atomic primitives to manipulate the shared variable */
     for (i = 0; i < INC_ITERATIONS; i++) {
-		__sync_add_and_fetch(&counter, INCREMENT);
+		__sync_add_and_fetch(&counter, INCREMENT); //atomic primitive function to increase the counter 
     }
+
 
     return NULL;
 }
@@ -132,7 +127,7 @@ dec_atomic(void *arg __attribute__((unused)))
 
     /* TODO 3: Use atomic primitives to manipulate the shared variable */
     for (i = 0; i < DEC_ITERATIONS; i++) {
-		__sync_sub_and_fetch(&counter, DECREMENT);
+		__sync_sub_and_fetch(&counter, DECREMENT); //atomic primitive function to decrease the counter
     }
 
     return NULL;

@@ -23,7 +23,12 @@
  * predictable way. Both should perform iteration 1 before iteration 2
  * and then 2 before 3 etc. */
 
-sem_t semA, semB;
+sem_t semA, semB; //semaphore for thread A and B
+
+
+/*
+ Alternatively lock & unlock each thread to make it wokr in order (ex. A0->B0->B1->A1->B2->A2->...)
+ */
 
 void *
 threadA(void *param __attribute__((unused)))
@@ -32,12 +37,11 @@ threadA(void *param __attribute__((unused)))
 
     for (i = 0; i < LOOPS; i++) {
 
-        sem_wait(&semA);
+        sem_wait(&semA); //decrease semA (if it is not positive number, wait until it is increased)
 
         printf("threadA --> %d iteration\n", i);
 
-        sem_getvalue(&semB, &val);
-        if(val!=1) sem_post(&semB);
+        sem_post(&semB); //increase semB so that it can perform the next operation
 
         sleep(rand() % MAX_SLEEP_TIME);
   }
@@ -52,13 +56,12 @@ threadB(void *param  __attribute__((unused)))
     int i, val;
 
     for (i = 0; i < LOOPS; i++) {
-        sem_wait(&semB);
+        sem_wait(&semB);    //decrease semB (if it is not positive number, wait until it is increased)
 
         printf("threadB --> %d iteration\n", i);
         
-        sem_getvalue(&semA, &val);
-        if(val!=1) sem_post(&semA);
-
+        sem_post(&semA);    //increase semA so that it can perform the next operation
+    
         sleep(rand() % MAX_SLEEP_TIME);
     }
 
@@ -73,6 +76,8 @@ main()
     srand(time(NULL));
     pthread_setconcurrency(3);
 
+    /*Initialize semaphores
+     If either of them fails, print error msg and abort the program*/
     if(sem_init(&semA, 0, 1) || sem_init(&semB, 0, 1)){
         perror("semaphore initialization error\n");
         abort();

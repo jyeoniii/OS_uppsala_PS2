@@ -27,7 +27,9 @@ typedef struct {
     int next_in, next_out;
 } buffer_t;
 
-
+sem_t prod_sem; //producer semaphore
+sem_t con_sem; //consumer semaphore
+sem_t mutex; //Used to enforce mutual exclusion
 buffer_t buffer;
 
 pthread_t consumer_tid[CONSUMERS], producer_tid[PRODUCERS];
@@ -44,12 +46,17 @@ insert_item(int item, long int id)
      * access to the buffer and use the existing code to remove an item.
      */
 
+    sem_wait(&prod_sem);
+    sem_wait(&mutex);
+    //sem_wait(&prod_sem); Adding this line and removing the first line (Switching the waits) cases deadlock
 
     buffer.value[buffer.next_in] = item;
     buffer.next_in = (buffer.next_in + 1) % BUFFER_SIZE;
     printf("producer %ld: inserted %d\n", id, item);
 
-
+    sem_post(&mutex); //Release the buffer from the critical state (Let consumer know it can take an item)
+    sem_post(&con_sem); //Increment the number of full spots
+    //sem_post(&mutex); Adding this line and removing the top one leads to starvation (All data goes into one index in the buffer)
     return 0;
 }
 
@@ -65,11 +72,18 @@ remove_item(int *item, long int id)
      * access to the buffer and use the existing code to remove an item.
      */
 
+    sem_wait(&con_sem);
+    sem_wait(&mutex);
+    //sem_wait(&con_sem); Adding this line and removing the first one causes deadlock   
 
     *item = buffer.value[buffer.next_out];
     buffer.value[buffer.next_out] = -1;
     buffer.next_out = (buffer.next_out + 1) % BUFFER_SIZE;
     printf("consumer %ld: removed %d\n", id, *item);
+
+    sem_post(&mutex); //Release the buffer from the critical state (Let producer know it can add an item)
+    sem_post(&prod_sem); //Release an empty spot
+    //sem_post(&mutex); //Adding this line and removing the top one leads to starvation
 
     return 0;
 }
@@ -132,6 +146,11 @@ main()
 
     srand(time(NULL));
 
+    //Initialize the semaphores
+    sem_init(&con_sem,0,0);
+    sem_init(&prod_sem,0,BUFFER_SIZE);
+    sem_init(&mutex,0,1);
+
     /* Create the consumer threads */
     for (i = 0; i < CONSUMERS; i++)
 	if (pthread_create(&consumer_tid[i], NULL, consumer, (void *)i) != 0) {
@@ -169,4 +188,4 @@ main()
  * indent-tabs-mode: nil
  * c-file-style: "stroustrup"
  * End:
- */
+*/
